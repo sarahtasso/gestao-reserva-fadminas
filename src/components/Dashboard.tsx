@@ -1,22 +1,25 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Building2, Settings, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const Dashboard = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedStatsType, setSelectedStatsType] = useState('');
+  const { toast } = useToast();
 
-  // Dados simulados
+  // Dados simulados expandidos
   const stats = {
     totalReservations: 24,
     pendingApprovals: 3,
-    activeReservations: 8,
-    availableRooms: 4
+    activeReservations: 8
   };
 
   // Reservas mockadas para diferentes datas
@@ -36,6 +39,32 @@ const Dashboard = ({ user }) => {
       { id: 6, title: 'Treinamento de Primeiros Socorros', location: 'Auditório Sergio Cidadão', time: '08:00', responsible: 'Dra. Paula', status: 'approved' }
     ]
   };
+
+  // Dados detalhados para os pop-ups dos cards
+  const [reservationsData, setReservationsData] = useState({
+    total: [
+      { id: 1, title: 'Culto Matutino', location: 'Igreja', date: '08/01/2025', time: '09:00', status: 'approved' },
+      { id: 2, title: 'Reunião da Diretoria', location: 'Auditório Sergio Cidadão', date: '08/01/2025', time: '14:00', status: 'approved' },
+      { id: 3, title: 'Jantar Beneficente', location: 'Refeitório', date: '10/01/2025', time: '19:00', status: 'pending' },
+      { id: 4, title: 'Palestra sobre Sustentabilidade', location: 'IDEC', date: '12/01/2025', time: '16:00', status: 'approved' },
+      { id: 5, title: 'Ensaio do Coral', location: 'Igreja', date: '12/01/2025', time: '20:00', status: 'approved' },
+      { id: 6, title: 'Treinamento de Primeiros Socorros', location: 'Auditório Sergio Cidadão', date: '15/01/2025', time: '08:00', status: 'approved' },
+      { id: 7, title: 'Reunião de Planejamento', location: 'IDEC', date: '18/01/2025', time: '10:00', status: 'rejected' },
+      { id: 8, title: 'Workshop de Liderança', location: 'Refeitório', date: '20/01/2025', time: '15:00', status: 'pending' }
+    ],
+    pending: [
+      { id: 3, title: 'Jantar Beneficente', location: 'Refeitório', date: '10/01/2025', time: '19:00', status: 'pending', responsible: 'João Costa' },
+      { id: 8, title: 'Workshop de Liderança', location: 'Refeitório', date: '20/01/2025', time: '15:00', status: 'pending', responsible: 'Ana Silva' },
+      { id: 9, title: 'Apresentação Cultural', location: 'Igreja', date: '25/01/2025', time: '17:00', status: 'pending', responsible: 'Pedro Santos' }
+    ],
+    active: [
+      { id: 1, title: 'Culto Matutino', location: 'Igreja', date: '08/01/2025', time: '09:00', status: 'approved' },
+      { id: 2, title: 'Reunião da Diretoria', location: 'Auditório Sergio Cidadão', date: '08/01/2025', time: '14:00', status: 'approved' },
+      { id: 4, title: 'Palestra sobre Sustentabilidade', location: 'IDEC', date: '12/01/2025', time: '16:00', status: 'approved' },
+      { id: 5, title: 'Ensaio do Coral', location: 'Igreja', date: '12/01/2025', time: '20:00', status: 'approved' },
+      { id: 6, title: 'Treinamento de Primeiros Socorros', location: 'Auditório Sergio Cidadão', date: '15/01/2025', time: '08:00', status: 'approved' }
+    ]
+  });
 
   const recentReservations = [
     { id: 1, location: 'Igreja', date: '2025-01-08', time: '09:00', status: 'approved' },
@@ -81,59 +110,136 @@ const Dashboard = ({ user }) => {
     setCurrentDate(newDate);
   };
 
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
-    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  // Função para abrir modal dos cards estatísticos
+  const handleStatsCardClick = (type) => {
+    setSelectedStatsType(type);
+    setShowStatsModal(true);
+  };
 
-    // Cabeçalho com dias da semana
-    const dayHeaders = dayNames.map(day => (
-      <div key={day} className="p-2 text-sm font-medium text-gray-600 text-center">
-        {day}
-      </div>
-    ));
+  // Função para aprovar reserva
+  const handleApproveReservation = (reservationId) => {
+    setReservationsData(prev => ({
+      ...prev,
+      pending: prev.pending.map(res => 
+        res.id === reservationId ? { ...res, status: 'approved' } : res
+      ).filter(res => res.status === 'pending'),
+      total: prev.total.map(res => 
+        res.id === reservationId ? { ...res, status: 'approved' } : res
+      ),
+      active: [...prev.active, prev.pending.find(res => res.id === reservationId && { ...res, status: 'approved' })].filter(Boolean)
+    }));
 
-    // Espaços em branco para o primeiro dia do mês
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="p-2"></div>);
+    toast({
+      title: "Reserva Aprovada",
+      description: "A reserva foi aprovada com sucesso!",
+    });
+  };
+
+  // Função para rejeitar reserva
+  const handleRejectReservation = (reservationId) => {
+    setReservationsData(prev => ({
+      ...prev,
+      pending: prev.pending.filter(res => res.id !== reservationId),
+      total: prev.total.map(res => 
+        res.id === reservationId ? { ...res, status: 'rejected' } : res
+      )
+    }));
+
+    toast({
+      title: "Reserva Rejeitada",
+      description: "A reserva foi rejeitada.",
+      variant: "destructive"
+    });
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'approved':
+        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Aprovado</span>;
+      case 'pending':
+        return <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">Pendente</span>;
+      case 'rejected':
+        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Rejeitado</span>;
+      default:
+        return null;
     }
+  };
 
-    // Dias do mês
-    for (let day = 1; day <= daysInMonth; day++) {
-      const hasEvents = hasReservations(day);
-      const isToday = new Date().getDate() === day && 
-                     new Date().getMonth() === currentDate.getMonth() && 
-                     new Date().getFullYear() === currentDate.getFullYear();
+  const renderStatsModal = () => {
+    let title = '';
+    let data = [];
 
-      days.push(
-        <button
-          key={day}
-          onClick={() => handleDateClick(day)}
-          className={cn(
-            "p-2 text-sm rounded-lg transition-colors",
-            hasEvents ? "bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer" : "hover:bg-gray-100",
-            isToday && "ring-2 ring-blue-500",
-            !hasEvents && "cursor-default"
-          )}
-        >
-          {day}
-          {hasEvents && (
-            <div className="w-2 h-2 bg-blue-600 rounded-full mx-auto mt-1"></div>
-          )}
-        </button>
-      );
+    switch (selectedStatsType) {
+      case 'total':
+        title = 'Total de Reservas';
+        data = reservationsData.total;
+        break;
+      case 'pending':
+        title = 'Aguardando Aprovação';
+        data = reservationsData.pending;
+        break;
+      case 'active':
+        title = 'Reservas Ativas';
+        data = reservationsData.active;
+        break;
+      default:
+        return null;
     }
 
     return (
-      <div className="space-y-2">
-        <div className="grid grid-cols-7 gap-1">
-          {dayHeaders}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {days}
-        </div>
-      </div>
+      <Dialog open={showStatsModal} onOpenChange={setShowStatsModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Evento</TableHead>
+                  <TableHead>Local</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Horário</TableHead>
+                  <TableHead>Status</TableHead>
+                  {selectedStatsType === 'pending' && <TableHead>Ações</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell>{item.location}</TableCell>
+                    <TableCell>{item.date}</TableCell>
+                    <TableCell>{item.time}</TableCell>
+                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    {selectedStatsType === 'pending' && (
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveReservation(item.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRejectReservation(item.id)}
+                          >
+                            Rejeitar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -144,9 +250,12 @@ const Dashboard = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+      {/* Cards de Estatísticas - Removido o card de Locais Disponíveis */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card 
+          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all"
+          onClick={() => handleStatsCardClick('total')}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -158,38 +267,32 @@ const Dashboard = ({ user }) => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0">
+        <Card 
+          className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 cursor-pointer hover:from-orange-600 hover:to-orange-700 transition-all"
+          onClick={() => handleStatsCardClick('pending')}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm">Aguardando Aprovação</p>
-                <p className="text-3xl font-bold">{stats.pendingApprovals}</p>
+                <p className="text-3xl font-bold">{reservationsData.pending.length}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-200" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0">
+        <Card 
+          className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 cursor-pointer hover:from-green-600 hover:to-green-700 transition-all"
+          onClick={() => handleStatsCardClick('active')}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Reservas Ativas</p>
-                <p className="text-3xl font-bold">{stats.activeReservations}</p>
+                <p className="text-3xl font-bold">{reservationsData.active.length}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">Locais Disponíveis</p>
-                <p className="text-3xl font-bold">{stats.availableRooms}</p>
-              </div>
-              <Building2 className="h-8 w-8 text-purple-200" />
             </div>
           </CardContent>
         </Card>
@@ -326,6 +429,9 @@ const Dashboard = ({ user }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Estatísticas */}
+      {renderStatsModal()}
     </div>
   );
 };
