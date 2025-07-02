@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,8 @@ const NewReservation = ({ user }) => {
     additionals: [],
     responsible: '',
     department: '',
-    observations: ''
+    observations: '',
+    decorationDetails: ''
   });
 
   const locations = [
@@ -111,9 +111,15 @@ const NewReservation = ({ user }) => {
     } else {
       setFormData({
         ...formData,
-        additionals: formData.additionals.filter(id => id !== additionalId)
+        additionals: formData.additionals.filter(id => id !== additionalId),
+        // Limpar detalhes da decoração se não estiver mais selecionada
+        decorationDetails: additionalId === 12 ? '' : formData.decorationDetails
       });
     }
+  };
+
+  const isDecorationSelected = () => {
+    return formData.additionals.includes(12);
   };
 
   const handleSubmit = () => {
@@ -141,7 +147,8 @@ const NewReservation = ({ user }) => {
       additionals: [],
       responsible: '',
       department: '',
-      observations: ''
+      observations: '',
+      decorationDetails: ''
     });
     setStep(1);
   };
@@ -360,6 +367,26 @@ const NewReservation = ({ user }) => {
                     ))}
                   </div>
                 </div>
+
+                {/* Campo adicional para detalhes da decoração */}
+                {isDecorationSelected() && (
+                  <div className="mt-6">
+                    <Label htmlFor="decorationDetails" className="text-red-600">
+                      Detalhamento da Decoração *
+                    </Label>
+                    <Textarea
+                      id="decorationDetails"
+                      value={formData.decorationDetails}
+                      onChange={(e) => setFormData({ ...formData, decorationDetails: e.target.value })}
+                      placeholder="Descreva detalhadamente como deverá ser a decoração (cores, estilo, elementos específicos, etc.)"
+                      rows={3}
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Campo obrigatório quando decoração for selecionada
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -459,6 +486,13 @@ const NewReservation = ({ user }) => {
                     </p>
                   </div>
                 )}
+
+                {formData.decorationDetails && (
+                  <div>
+                    <h4 className="font-medium text-gray-900">Detalhamento da Decoração</h4>
+                    <p className="text-gray-600">{formData.decorationDetails}</p>
+                  </div>
+                )}
                 
                 <div>
                   <h4 className="font-medium text-gray-900">Responsável</h4>
@@ -495,6 +529,7 @@ const NewReservation = ({ user }) => {
                 disabled={
                   (step === 1 && (!formData.date || !formData.time || !formData.duration)) ||
                   (step === 2 && !formData.location) ||
+                  (step === 3 && isDecorationSelected() && !formData.decorationDetails.trim()) ||
                   (step === 4 && (!formData.responsible || !formData.department))
                 }
               >
