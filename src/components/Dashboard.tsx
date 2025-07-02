@@ -1,25 +1,145 @@
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Building2, Settings, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Building2, Settings, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const Dashboard = ({ user }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showReservationsModal, setShowReservationsModal] = useState(false);
+
   // Dados simulados
   const stats = {
     totalReservations: 24,
     pendingApprovals: 3,
     activeReservations: 8,
-    availableRooms: 12
+    availableRooms: 4
+  };
+
+  // Reservas mockadas para diferentes datas
+  const mockReservations = {
+    '2025-01-08': [
+      { id: 1, title: 'Culto Matutino', location: 'Igreja', time: '09:00', responsible: 'Pastor Silva', status: 'approved' },
+      { id: 2, title: 'Reunião da Diretoria', location: 'Auditório Sergio Cidadão', time: '14:00', responsible: 'Maria Santos', status: 'approved' }
+    ],
+    '2025-01-10': [
+      { id: 3, title: 'Jantar Beneficente', location: 'Refeitório', time: '19:00', responsible: 'João Costa', status: 'pending' }
+    ],
+    '2025-01-12': [
+      { id: 4, title: 'Palestra sobre Sustentabilidade', location: 'IDEC', time: '16:00', responsible: 'Ana Oliveira', status: 'approved' },
+      { id: 5, title: 'Ensaio do Coral', location: 'Igreja', time: '20:00', responsible: 'Carlos Music', status: 'approved' }
+    ],
+    '2025-01-15': [
+      { id: 6, title: 'Treinamento de Primeiros Socorros', location: 'Auditório Sergio Cidadão', time: '08:00', responsible: 'Dra. Paula', status: 'approved' }
+    ]
   };
 
   const recentReservations = [
-    { id: 1, location: 'Sala de Reunião A', date: '2025-01-08', time: '14:00', status: 'approved' },
-    { id: 2, location: 'Auditório Principal', date: '2025-01-10', time: '09:00', status: 'pending' },
-    { id: 3, location: 'Laboratório Tech', date: '2025-01-12', time: '16:00', status: 'approved' },
+    { id: 1, location: 'Igreja', date: '2025-01-08', time: '09:00', status: 'approved' },
+    { id: 2, location: 'Auditório Sergio Cidadão', date: '2025-01-10', time: '14:00', status: 'pending' },
+    { id: 3, location: 'IDEC', date: '2025-01-12', time: '16:00', status: 'approved' },
   ];
 
   const upcomingEvents = [
-    { id: 1, title: 'Reunião de Planejamento', location: 'Sala A', time: '10:00' },
-    { id: 2, title: 'Treinamento de Segurança', location: 'Auditório', time: '14:30' },
+    { id: 1, title: 'Culto Matutino', location: 'Igreja', date: '08/01/2025', time: '09:00' },
+    { id: 2, title: 'Reunião da Diretoria', location: 'Auditório Sergio Cidadão', date: '10/01/2025', time: '14:00' },
+    { id: 3, title: 'Palestra sobre Sustentabilidade', location: 'IDEC', date: '12/01/2025', time: '16:00' },
+  ];
+
+  // Funções do calendário
+  const getDaysInMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const formatDateKey = (year, month, day) => {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const hasReservations = (day) => {
+    const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth(), day);
+    return mockReservations[dateKey] && mockReservations[dateKey].length > 0;
+  };
+
+  const handleDateClick = (day) => {
+    const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth(), day);
+    if (mockReservations[dateKey]) {
+      setSelectedDate({ day, reservations: mockReservations[dateKey] });
+      setShowReservationsModal(true);
+    }
+  };
+
+  const navigateMonth = (direction) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + direction);
+    setCurrentDate(newDate);
+  };
+
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days = [];
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    // Cabeçalho com dias da semana
+    const dayHeaders = dayNames.map(day => (
+      <div key={day} className="p-2 text-sm font-medium text-gray-600 text-center">
+        {day}
+      </div>
+    ));
+
+    // Espaços em branco para o primeiro dia do mês
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="p-2"></div>);
+    }
+
+    // Dias do mês
+    for (let day = 1; day <= daysInMonth; day++) {
+      const hasEvents = hasReservations(day);
+      const isToday = new Date().getDate() === day && 
+                     new Date().getMonth() === currentDate.getMonth() && 
+                     new Date().getFullYear() === currentDate.getFullYear();
+
+      days.push(
+        <button
+          key={day}
+          onClick={() => handleDateClick(day)}
+          className={cn(
+            "p-2 text-sm rounded-lg transition-colors",
+            hasEvents ? "bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer" : "hover:bg-gray-100",
+            isToday && "ring-2 ring-blue-500",
+            !hasEvents && "cursor-default"
+          )}
+        >
+          {day}
+          {hasEvents && (
+            <div className="w-2 h-2 bg-blue-600 rounded-full mx-auto mt-1"></div>
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-7 gap-1">
+          {dayHeaders}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {days}
+        </div>
+      </div>
+    );
+  };
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
   return (
@@ -66,7 +186,7 @@ const Dashboard = ({ user }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">Salas Disponíveis</p>
+                <p className="text-purple-100 text-sm">Locais Disponíveis</p>
                 <p className="text-3xl font-bold">{stats.availableRooms}</p>
               </div>
               <Building2 className="h-8 w-8 text-purple-200" />
@@ -75,38 +195,35 @@ const Dashboard = ({ user }) => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Reservas Recentes */}
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Calendário Mensal */}
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>Reservas Recentes</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5" />
+                <span>Calendário de Reservas</span>
+              </CardTitle>
+              <div className="flex items-center space-x-4">
+                <Button variant="outline" size="sm" onClick={() => navigateMonth(-1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium">
+                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => navigateMonth(1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentReservations.map((reservation) => (
-                <div key={reservation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{reservation.location}</p>
-                    <p className="text-sm text-gray-600">{reservation.date} às {reservation.time}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {reservation.status === 'approved' ? (
-                      <span className="flex items-center text-green-600 text-sm">
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Aprovado
-                      </span>
-                    ) : (
-                      <span className="flex items-center text-orange-600 text-sm">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        Pendente
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+            {renderCalendar()}
+            <div className="mt-4 flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                <span>Dias com reservas</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -122,13 +239,16 @@ const Dashboard = ({ user }) => {
           <CardContent>
             <div className="space-y-4">
               {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{event.title}</p>
-                    <p className="text-sm text-gray-600">{event.location}</p>
-                  </div>
-                  <div className="text-blue-600 font-medium">
-                    {event.time}
+                <div key={event.id} className="flex flex-col p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{event.title}</p>
+                      <p className="text-sm text-gray-600">{event.location}</p>
+                      <p className="text-sm text-gray-500">{event.date}</p>
+                    </div>
+                    <div className="text-blue-600 font-medium text-sm">
+                      {event.time}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -136,6 +256,76 @@ const Dashboard = ({ user }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reservas Recentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5" />
+            <span>Reservas Recentes</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentReservations.map((reservation) => (
+              <div key={reservation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{reservation.location}</p>
+                  <p className="text-sm text-gray-600">{reservation.date} às {reservation.time}</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {reservation.status === 'approved' ? (
+                    <span className="flex items-center text-green-600 text-sm">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Aprovado
+                    </span>
+                  ) : (
+                    <span className="flex items-center text-orange-600 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      Pendente
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Reservas do Dia */}
+      <Dialog open={showReservationsModal} onOpenChange={setShowReservationsModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Reservas do dia {selectedDate?.day}/{currentDate.getMonth() + 1}/{currentDate.getFullYear()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {selectedDate?.reservations.map((reservation) => (
+              <div key={reservation.id} className="p-3 border rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{reservation.title}</p>
+                    <p className="text-sm text-gray-600">{reservation.location}</p>
+                    <p className="text-sm text-gray-500">Responsável: {reservation.responsible}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-blue-600">{reservation.time}</p>
+                    <span className={cn(
+                      "text-xs px-2 py-1 rounded-full",
+                      reservation.status === 'approved' 
+                        ? "bg-green-100 text-green-800" 
+                        : "bg-orange-100 text-orange-800"
+                    )}>
+                      {reservation.status === 'approved' ? 'Aprovado' : 'Pendente'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

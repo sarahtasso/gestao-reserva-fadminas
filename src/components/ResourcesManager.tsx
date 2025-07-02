@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Building2, Settings, Plus, Edit, Trash2 } from 'lucide-react';
+import { Building2, Settings, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
@@ -14,21 +14,29 @@ const ResourcesManager = ({ user }) => {
   const [activeTab, setActiveTab] = useState('locations');
   
   const [locations, setLocations] = useState([
-    { id: 1, name: 'Sala de Reunião A', capacity: 10, available: true },
-    { id: 2, name: 'Sala de Reunião B', capacity: 8, available: true },
-    { id: 3, name: 'Auditório Principal', capacity: 100, available: true },
-    { id: 4, name: 'Laboratório Tech', capacity: 15, available: false },
+    { id: 1, name: 'Igreja', capacity: 1000, available: true },
+    { id: 2, name: 'Auditório Sergio Cidadão', capacity: 150, available: true },
+    { id: 3, name: 'Refeitório', capacity: 300, available: true },
+    { id: 4, name: 'IDEC', capacity: 200, available: false },
   ]);
 
   const [equipment, setEquipment] = useState([
-    { id: 1, name: 'Projetor', category: 'Audiovisual', available: true },
-    { id: 2, name: 'Notebook', category: 'Informática', available: true },
-    { id: 3, name: 'Microfone', category: 'Audiovisual', available: false },
-    { id: 4, name: 'Caixa de Som', category: 'Audiovisual', available: true },
+    { id: 1, name: 'Computador', category: 'Equipamentos', available: true },
+    { id: 2, name: 'Telão/Projetor/TV', category: 'Equipamentos', available: true },
+    { id: 3, name: 'Mesa de Som', category: 'Equipamentos', available: true },
+    { id: 4, name: 'Caixa de Som', category: 'Equipamentos', available: true },
+    { id: 5, name: 'Microfone', category: 'Equipamentos', available: false },
+    { id: 6, name: 'Câmeras de gravação', category: 'Equipamentos', available: true },
+    { id: 7, name: 'Mídia (celular)', category: 'Equipamentos', available: true },
+    { id: 8, name: 'Iluminação', category: 'Equipamentos', available: true },
+    { id: 9, name: 'Passador', category: 'Adicionais', available: true },
+    { id: 10, name: 'Lapela', category: 'Adicionais', available: true },
+    { id: 11, name: 'Rádio', category: 'Adicionais', available: true },
+    { id: 12, name: 'Decoração', category: 'Adicionais', available: true },
   ]);
 
   const [newLocation, setNewLocation] = useState({ name: '', capacity: '' });
-  const [newEquipment, setNewEquipment] = useState({ name: '', category: '' });
+  const [newEquipment, setNewEquipment] = useState({ name: '', category: 'Equipamentos' });
 
   const handleAddLocation = () => {
     if (newLocation.name && newLocation.capacity) {
@@ -56,7 +64,7 @@ const ResourcesManager = ({ user }) => {
         category: newEquipment.category,
         available: true
       }]);
-      setNewEquipment({ name: '', category: '' });
+      setNewEquipment({ name: '', category: 'Equipamentos' });
       toast({
         title: "Equipamento adicionado com sucesso!",
         description: `${newEquipment.name} foi adicionado à lista de equipamentos.`,
@@ -94,6 +102,11 @@ const ResourcesManager = ({ user }) => {
       title: "Equipamento removido",
       description: "O equipamento foi removido com sucesso.",
     });
+  };
+
+  const equipmentsByCategory = {
+    'Equipamentos': equipment.filter(item => item.category === 'Equipamentos'),
+    'Adicionais': equipment.filter(item => item.category === 'Adicionais')
   };
 
   return (
@@ -237,12 +250,15 @@ const ResourcesManager = ({ user }) => {
                     </div>
                     <div>
                       <Label htmlFor="equipment-category">Categoria</Label>
-                      <Input
+                      <select
                         id="equipment-category"
                         value={newEquipment.category}
                         onChange={(e) => setNewEquipment({ ...newEquipment, category: e.target.value })}
-                        placeholder="Ex: Audiovisual, Informática"
-                      />
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="Equipamentos">Equipamentos</option>
+                        <option value="Adicionais">Adicionais</option>
+                      </select>
                     </div>
                     <Button onClick={handleAddEquipment} className="w-full">
                       Adicionar Equipamento
@@ -252,28 +268,35 @@ const ResourcesManager = ({ user }) => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {equipment.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{item.name}</h3>
-                      <p className="text-sm text-gray-600">Categoria: {item.category}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={item.available ? 'default' : 'secondary'}>
-                        {item.available ? 'Disponível' : 'Em manutenção'}
-                      </Badge>
-                      <Switch
-                        checked={item.available}
-                        onCheckedChange={() => toggleEquipmentAvailability(item.id)}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeEquipment(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              <div className="space-y-6">
+                {Object.entries(equipmentsByCategory).map(([category, items]) => (
+                  <div key={category}>
+                    <h3 className="font-medium text-lg mb-3 text-gray-900">{category}</h3>
+                    <div className="space-y-3">
+                      {items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <h4 className="font-medium">{item.name}</h4>
+                            <p className="text-sm text-gray-600">Categoria: {item.category}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant={item.available ? 'default' : 'secondary'}>
+                              {item.available ? 'Disponível' : 'Em manutenção'}
+                            </Badge>
+                            <Switch
+                              checked={item.available}
+                              onCheckedChange={() => toggleEquipmentAvailability(item.id)}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeEquipment(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}

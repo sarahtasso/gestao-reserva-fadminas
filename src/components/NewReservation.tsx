@@ -7,11 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, MapPin, Settings, User, FileText, CheckCircle } from 'lucide-react';
+import { CalendarIcon, MapPin, Settings, User, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -23,23 +21,72 @@ const NewReservation = ({ user }) => {
     duration: '',
     location: '',
     equipment: [],
+    additionals: [],
     responsible: '',
+    department: '',
     observations: ''
   });
 
   const locations = [
-    'Sala de Reunião A', 'Sala de Reunião B', 'Auditório Principal', 
-    'Laboratório Tech', 'Sala de Treinamento', 'Sala de Videoconferência'
+    { name: 'Igreja', capacity: 1000 },
+    { name: 'Auditório Sergio Cidadão', capacity: 150 },
+    { name: 'Refeitório', capacity: 300 },
+    { name: 'IDEC', capacity: 200 }
   ];
 
   const equipment = [
-    { id: 1, name: 'Projetor', available: true },
-    { id: 2, name: 'Notebook', available: true },
-    { id: 3, name: 'Microfone', available: false },
+    { id: 1, name: 'Computador', available: true },
+    { id: 2, name: 'Telão/Projetor/TV', available: true },
+    { id: 3, name: 'Mesa de Som', available: true },
     { id: 4, name: 'Caixa de Som', available: true },
-    { id: 5, name: 'Flip Chart', available: true },
-    { id: 6, name: 'Mesa Redonda Extra', available: true },
+    { id: 5, name: 'Microfone', available: false },
+    { id: 6, name: 'Câmeras de gravação', available: true },
+    { id: 7, name: 'Mídia (celular)', available: true },
+    { id: 8, name: 'Iluminação', available: true },
   ];
+
+  const additionals = [
+    { id: 9, name: 'Passador', available: true },
+    { id: 10, name: 'Lapela', available: true },
+    { id: 11, name: 'Rádio', available: true },
+    { id: 12, name: 'Decoração', available: true },
+  ];
+
+  // Simulação de reservas existentes para detecção de conflitos
+  const existingReservations = [
+    { location: 'Igreja', date: '2025-01-08', time: '09:00', duration: '2' },
+    { location: 'Auditório Sergio Cidadão', date: '2025-01-10', time: '14:00', duration: '4' },
+    { location: 'IDEC', date: '2025-01-12', time: '16:00', duration: '2' },
+  ];
+
+  const checkConflict = () => {
+    if (!formData.date || !formData.time || !formData.location || !formData.duration) {
+      return false;
+    }
+
+    const selectedDate = format(formData.date, 'yyyy-MM-dd');
+    const selectedTime = parseInt(formData.time.split(':')[0]);
+    const selectedDuration = parseInt(formData.duration);
+
+    for (const reservation of existingReservations) {
+      if (
+        reservation.location === formData.location &&
+        reservation.date === selectedDate
+      ) {
+        const existingTime = parseInt(reservation.time.split(':')[0]);
+        const existingDuration = parseInt(reservation.duration);
+        
+        // Verifica sobreposição de horários
+        if (
+          (selectedTime >= existingTime && selectedTime < existingTime + existingDuration) ||
+          (selectedTime + selectedDuration > existingTime && selectedTime < existingTime + existingDuration)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
 
   const handleEquipmentChange = (equipmentId, checked) => {
     if (checked) {
@@ -55,7 +102,30 @@ const NewReservation = ({ user }) => {
     }
   };
 
+  const handleAdditionalChange = (additionalId, checked) => {
+    if (checked) {
+      setFormData({
+        ...formData,
+        additionals: [...formData.additionals, additionalId]
+      });
+    } else {
+      setFormData({
+        ...formData,
+        additionals: formData.additionals.filter(id => id !== additionalId)
+      });
+    }
+  };
+
   const handleSubmit = () => {
+    if (checkConflict()) {
+      toast({
+        title: "Conflito detectado!",
+        description: "Este local já está reservado no horário selecionado. Escolha outro horário ou local.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Reserva solicitada com sucesso!",
       description: "Sua reserva será analisada pela equipe responsável.",
@@ -68,13 +138,25 @@ const NewReservation = ({ user }) => {
       duration: '',
       location: '',
       equipment: [],
+      additionals: [],
       responsible: '',
+      department: '',
       observations: ''
     });
     setStep(1);
   };
 
   const nextStep = () => {
+    if (step === 1) {
+      if (checkConflict()) {
+        toast({
+          title: "Conflito detectado!",
+          description: "Este local já está reservado no horário selecionado. Escolha outro horário ou local.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (step < 6) setStep(step + 1);
   };
 
@@ -107,6 +189,11 @@ const NewReservation = ({ user }) => {
     </div>
   );
 
+  const isDateUnavailable = (date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return existingReservations.some(reservation => reservation.date === dateStr);
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <Card className="shadow-lg">
@@ -133,8 +220,23 @@ const NewReservation = ({ user }) => {
                   onSelect={(date) => setFormData({ ...formData, date })}
                   disabled={(date) => date < new Date()}
                   className="rounded-md border"
+                  modifiers={{
+                    unavailable: isDateUnavailable
+                  }}
+                  modifiersStyles={{
+                    unavailable: { backgroundColor: '#fee2e2', color: '#dc2626' }
+                  }}
                 />
               </div>
+
+              {formData.date && isDateUnavailable(formData.date) && (
+                <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  <p className="text-red-800 text-sm">
+                    Esta data possui reservas existentes. Verifique a disponibilidade do horário desejado.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -176,18 +278,18 @@ const NewReservation = ({ user }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {locations.map((location) => (
                   <Card 
-                    key={location}
+                    key={location.name}
                     className={cn(
                       "cursor-pointer transition-all hover:shadow-md",
-                      formData.location === location 
+                      formData.location === location.name 
                         ? "ring-2 ring-blue-500 bg-blue-50" 
                         : "hover:bg-gray-50"
                     )}
-                    onClick={() => setFormData({ ...formData, location })}
+                    onClick={() => setFormData({ ...formData, location: location.name })}
                   >
                     <CardContent className="p-4 text-center">
-                      <h4 className="font-medium">{location}</h4>
-                      <p className="text-sm text-gray-600 mt-1">Capacidade: 20 pessoas</p>
+                      <h4 className="font-medium">{location.name}</h4>
+                      <p className="text-sm text-gray-600 mt-1">Capacidade: {location.capacity} pessoas</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -200,36 +302,69 @@ const NewReservation = ({ user }) => {
             <div className="space-y-6">
               <div className="text-center">
                 <Settings className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Equipamentos</h3>
-                <p className="text-gray-600">Selecione os equipamentos necessários</p>
+                <h3 className="text-xl font-semibold mb-2">Equipamentos e Recursos</h3>
+                <p className="text-gray-600">Selecione os recursos necessários</p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {equipment.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                    <Checkbox
-                      id={`equipment-${item.id}`}
-                      checked={formData.equipment.includes(item.id)}
-                      onCheckedChange={(checked) => handleEquipmentChange(item.id, checked)}
-                      disabled={!item.available}
-                    />
-                    <Label 
-                      htmlFor={`equipment-${item.id}`}
-                      className={cn(
-                        "flex-1",
-                        item.available ? "text-gray-900" : "text-gray-400"
-                      )}
-                    >
-                      {item.name}
-                      {!item.available && <span className="text-red-500 text-sm ml-2">(Indisponível)</span>}
-                    </Label>
+              <div className="space-y-6">
+                {/* Equipamentos Principais */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Equipamentos</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {equipment.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox
+                          id={`equipment-${item.id}`}
+                          checked={formData.equipment.includes(item.id)}
+                          onCheckedChange={(checked) => handleEquipmentChange(item.id, checked)}
+                          disabled={!item.available}
+                        />
+                        <Label 
+                          htmlFor={`equipment-${item.id}`}
+                          className={cn(
+                            "flex-1",
+                            item.available ? "text-gray-900" : "text-gray-400"
+                          )}
+                        >
+                          {item.name}
+                          {!item.available && <span className="text-red-500 text-sm ml-2">(Indisponível)</span>}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Adicionais */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Adicionais</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {additionals.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox
+                          id={`additional-${item.id}`}
+                          checked={formData.additionals.includes(item.id)}
+                          onCheckedChange={(checked) => handleAdditionalChange(item.id, checked)}
+                          disabled={!item.available}
+                        />
+                        <Label 
+                          htmlFor={`additional-${item.id}`}
+                          className={cn(
+                            "flex-1",
+                            item.available ? "text-gray-900" : "text-gray-400"
+                          )}
+                        >
+                          {item.name}
+                          {!item.available && <span className="text-red-500 text-sm ml-2">(Indisponível)</span>}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Step 4: Responsável */}
+          {/* Step 4: Responsável e Departamento */}
           {step === 4 && (
             <div className="space-y-6">
               <div className="text-center">
@@ -238,14 +373,26 @@ const NewReservation = ({ user }) => {
                 <p className="text-gray-600">Informe quem será o responsável pelo evento</p>
               </div>
               
-              <div>
-                <Label htmlFor="responsible">Nome do Responsável</Label>
-                <Input
-                  id="responsible"
-                  value={formData.responsible}
-                  onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
-                  placeholder="Nome completo do responsável"
-                />
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="responsible">Nome do Responsável</Label>
+                  <Input
+                    id="responsible"
+                    value={formData.responsible}
+                    onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
+                    placeholder="Nome completo do responsável"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="department">Departamento</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    placeholder="Departamento responsável pelo evento"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -304,9 +451,23 @@ const NewReservation = ({ user }) => {
                   </p>
                 </div>
                 
+                {formData.additionals.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900">Adicionais</h4>
+                    <p className="text-gray-600">
+                      {additionals.filter(a => formData.additionals.includes(a.id)).map(a => a.name).join(', ')}
+                    </p>
+                  </div>
+                )}
+                
                 <div>
                   <h4 className="font-medium text-gray-900">Responsável</h4>
                   <p className="text-gray-600">{formData.responsible || 'Não informado'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900">Departamento</h4>
+                  <p className="text-gray-600">{formData.department || 'Não informado'}</p>
                 </div>
                 
                 {formData.observations && (
@@ -334,7 +495,7 @@ const NewReservation = ({ user }) => {
                 disabled={
                   (step === 1 && (!formData.date || !formData.time || !formData.duration)) ||
                   (step === 2 && !formData.location) ||
-                  (step === 4 && !formData.responsible)
+                  (step === 4 && (!formData.responsible || !formData.department))
                 }
               >
                 Próximo
