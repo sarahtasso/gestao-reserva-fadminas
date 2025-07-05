@@ -7,12 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const Dashboard = ({ user }) => {
+const Dashboard = ({ user, setActiveTab, setSelectedDate: setGlobalSelectedDate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showNewReservationModal, setShowNewReservationModal] = useState(false);
   const [selectedStatsType, setSelectedStatsType] = useState('');
   const { toast } = useToast();
 
@@ -148,8 +147,15 @@ const Dashboard = ({ user }) => {
   };
 
   const handleCreateReservation = () => {
+    if (selectedDate && setGlobalSelectedDate) {
+      // Passar a data selecionada para o componente pai
+      setGlobalSelectedDate(selectedDate.fullDate);
+    }
     setShowReservationsModal(false);
-    setShowNewReservationModal(true);
+    // Redirecionar para a aba de nova reserva
+    if (setActiveTab) {
+      setActiveTab('new-reservation');
+    }
   };
 
   // Função para renderizar o calendário
@@ -555,32 +561,6 @@ const Dashboard = ({ user }) => {
                 <p className="text-sm">Clique no botão acima para criar uma nova reserva.</p>
               </div>
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Nova Reserva */}
-      <Dialog open={showNewReservationModal} onOpenChange={setShowNewReservationModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              Nova Reserva - {selectedDate?.day}/{currentDate.getMonth() + 1}/{currentDate.getFullYear()}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
-              <p className="text-blue-800 font-medium">Funcionalidade em desenvolvimento</p>
-              <p className="text-blue-600 text-sm mt-1">
-                Para criar uma nova reserva, use a aba "Nova Reserva" no menu principal.
-              </p>
-            </div>
-            <Button 
-              onClick={() => setShowNewReservationModal(false)}
-              className="w-full"
-              variant="outline"
-            >
-              Fechar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

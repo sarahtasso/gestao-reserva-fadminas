@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoginForm from '@/components/LoginForm';
@@ -12,6 +11,7 @@ import { Building2, Calendar, Settings, Users, BookOpen } from 'lucide-react';
 const Index = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedDate, setSelectedDate] = useState(null);
 
   if (!user) {
     return <LoginForm onLogin={setUser} />;
@@ -74,11 +74,19 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard user={user} />
+            <Dashboard 
+              user={user} 
+              setActiveTab={setActiveTab}
+              setSelectedDate={setSelectedDate}
+            />
           </TabsContent>
 
           <TabsContent value="new-reservation">
-            <NewReservation user={user} />
+            <NewReservation 
+              user={user} 
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+            />
           </TabsContent>
 
           <TabsContent value="reservations">
