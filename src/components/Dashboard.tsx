@@ -110,6 +110,58 @@ const Dashboard = ({ user }) => {
     setCurrentDate(newDate);
   };
 
+  // Função para renderizar o calendário
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days = [];
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    // Cabeçalho com os dias da semana
+    const header = dayNames.map(day => (
+      <div key={day} className="text-center text-sm font-medium text-gray-500 p-2">
+        {day}
+      </div>
+    ));
+
+    // Dias vazios no início do mês
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="p-2"></div>);
+    }
+
+    // Dias do mês
+    for (let day = 1; day <= daysInMonth; day++) {
+      const hasRes = hasReservations(day);
+      const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+      
+      days.push(
+        <div
+          key={day}
+          onClick={() => hasRes && handleDateClick(day)}
+          className={cn(
+            "p-2 text-center text-sm cursor-pointer rounded-lg transition-colors",
+            hasRes ? "bg-blue-100 text-blue-800 hover:bg-blue-200" : "hover:bg-gray-100",
+            isToday && "bg-blue-600 text-white hover:bg-blue-700",
+            hasRes && !isToday && "font-medium"
+          )}
+        >
+          {day}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-7 gap-1">
+          {header}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {days}
+        </div>
+      </div>
+    );
+  };
+
   // Função para abrir modal dos cards estatísticos
   const handleStatsCardClick = (type) => {
     setSelectedStatsType(type);
