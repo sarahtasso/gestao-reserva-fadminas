@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
-const NewReservation = ({ user }) => {
+const NewReservation = ({ user, selectedDate, setSelectedDate }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     date: null,
@@ -26,6 +26,16 @@ const NewReservation = ({ user }) => {
     observations: '',
     decorationDetails: ''
   });
+
+  // Effect to set the date when selectedDate prop changes
+  useEffect(() => {
+    if (selectedDate) {
+      setFormData(prev => ({
+        ...prev,
+        date: selectedDate
+      }));
+    }
+  }, [selectedDate]);
 
   const locations = [
     { name: 'Igreja', capacity: 1000 },
@@ -151,6 +161,11 @@ const NewReservation = ({ user }) => {
       decorationDetails: ''
     });
     setStep(1);
+    
+    // Clear selected date in parent component
+    if (setSelectedDate) {
+      setSelectedDate(null);
+    }
   };
 
   const nextStep = () => {
