@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Building2, Settings, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Building2, Settings, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ const Dashboard = ({ user }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showNewReservationModal, setShowNewReservationModal] = useState(false);
   const [selectedStatsType, setSelectedStatsType] = useState('');
   const { toast } = useToast();
 
@@ -129,16 +130,26 @@ const Dashboard = ({ user }) => {
 
   const handleDateClick = (day) => {
     const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth(), day);
-    if (mockReservations[dateKey]) {
-      setSelectedDate({ day, reservations: mockReservations[dateKey] });
-      setShowReservationsModal(true);
-    }
+    const dayReservations = mockReservations[dateKey] || [];
+    
+    setSelectedDate({ 
+      day, 
+      reservations: dayReservations,
+      dateKey,
+      fullDate: new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+    });
+    setShowReservationsModal(true);
   };
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(currentDate.getMonth() + direction);
     setCurrentDate(newDate);
+  };
+
+  const handleCreateReservation = () => {
+    setShowReservationsModal(false);
+    setShowNewReservationModal(true);
   };
 
   // Função para renderizar o calendário
@@ -162,13 +173,12 @@ const Dashboard = ({ user }) => {
 
     // Dias do mês
     for (let day = 1; day <= daysInMonth; day++) {
-      const hasRes = hasReservations(day);
       const dayClass = getCalendarDayClass(day);
       
       days.push(
         <div
           key={day}
-          onClick={() => hasRes && handleDateClick(day)}
+          onClick={() => handleDateClick(day)}
           className={cn(
             "p-2 text-center text-sm cursor-pointer rounded-lg transition-colors",
             dayClass
@@ -331,7 +341,7 @@ const Dashboard = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cards de Estatísticas - Removido o card de Locais Disponíveis */}
+      {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card 
           className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all"
@@ -493,32 +503,84 @@ const Dashboard = ({ user }) => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Reservas do dia {selectedDate?.day}/{currentDate.getMonth() + 1}/{currentDate.getFullYear()}
+              {selectedDate?.day}/{currentDate.getMonth() + 1}/{currentDate.getFullYear()}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            {selectedDate?.reservations.map((reservation) => (
-              <div key={reservation.id} className="p-3 border rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium">{reservation.title}</p>
-                    <p className="text-sm text-gray-600">{reservation.location}</p>
-                    <p className="text-sm text-gray-500">Responsável: {reservation.responsible}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-blue-600">{reservation.time}</p>
-                    <span className={cn(
-                      "text-xs px-2 py-1 rounded-full",
-                      reservation.status === 'approved' 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-orange-100 text-orange-800"
-                    )}>
-                      {reservation.status === 'approved' ? 'Aprovado' : 'Pendente'}
-                    </span>
+          <div className="space-y-4">
+            {/* Botão para criar nova reserva */}
+            <Button 
+              onClick={handleCreateReservation}
+              className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nova Reserva para este dia</span>
+            </Button>
+
+            {/* Reservas existentes */}
+            {selectedDate?.reservations && selectedDate.reservations.length > 0 && (
+              <>
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Reservas existentes:</h4>
+                  <div className="space-y-3">
+                    {selectedDate.reservations.map((reservation) => (
+                      <div key={reservation.id} className="p-3 border rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{reservation.title}</p>
+                            <p className="text-sm text-gray-600">{reservation.location}</p>
+                            <p className="text-sm text-gray-500">Responsável: {reservation.responsible}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-blue-600">{reservation.time}</p>
+                            <span className={cn(
+                              "text-xs px-2 py-1 rounded-full",
+                              reservation.status === 'approved' 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-orange-100 text-orange-800"
+                            )}>
+                              {reservation.status === 'approved' ? 'Aprovado' : 'Pendente'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              </>
+            )}
+
+            {selectedDate?.reservations && selectedDate.reservations.length === 0 && (
+              <div className="text-center py-4 text-gray-500">
+                <p>Nenhuma reserva para este dia.</p>
+                <p className="text-sm">Clique no botão acima para criar uma nova reserva.</p>
               </div>
-            ))}
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Nova Reserva */}
+      <Dialog open={showNewReservationModal} onOpenChange={setShowNewReservationModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Nova Reserva - {selectedDate?.day}/{currentDate.getMonth() + 1}/{currentDate.getFullYear()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg text-center">
+              <p className="text-blue-800 font-medium">Funcionalidade em desenvolvimento</p>
+              <p className="text-blue-600 text-sm mt-1">
+                Para criar uma nova reserva, use a aba "Nova Reserva" no menu principal.
+              </p>
+            </div>
+            <Button 
+              onClick={() => setShowNewReservationModal(false)}
+              className="w-full"
+              variant="outline"
+            >
+              Fechar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
