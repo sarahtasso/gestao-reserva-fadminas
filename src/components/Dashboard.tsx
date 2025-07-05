@@ -78,6 +78,37 @@ const Dashboard = ({ user }) => {
     { id: 3, title: 'Palestra sobre Sustentabilidade', location: 'IDEC', date: '12/01/2025', time: '16:00' },
   ];
 
+  // Função auxiliar para determinar o tipo de reservas de um dia
+  const getReservationTypes = (day) => {
+    const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth(), day);
+    const dayReservations = mockReservations[dateKey] || [];
+    
+    const hasActive = dayReservations.some(res => res.status === 'approved');
+    const hasPending = dayReservations.some(res => res.status === 'pending');
+    
+    return { hasActive, hasPending };
+  };
+
+  // Função para obter a classe CSS baseada no tipo de reservas
+  const getCalendarDayClass = (day) => {
+    const { hasActive, hasPending } = getReservationTypes(day);
+    const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+    
+    if (isToday) {
+      return "bg-blue-600 text-white hover:bg-blue-700";
+    }
+    
+    if (hasActive && hasPending) {
+      return "bg-blue-100 text-blue-800 hover:bg-blue-200 font-medium"; // Ambos: azul
+    } else if (hasActive) {
+      return "bg-green-100 text-green-800 hover:bg-green-200 font-medium"; // Apenas ativas: verde
+    } else if (hasPending) {
+      return "bg-orange-100 text-orange-800 hover:bg-orange-200 font-medium"; // Apenas pendentes: laranja
+    }
+    
+    return "hover:bg-gray-100"; // Sem reservas
+  };
+
   // Funções do calendário
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -132,7 +163,7 @@ const Dashboard = ({ user }) => {
     // Dias do mês
     for (let day = 1; day <= daysInMonth; day++) {
       const hasRes = hasReservations(day);
-      const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+      const dayClass = getCalendarDayClass(day);
       
       days.push(
         <div
@@ -140,9 +171,7 @@ const Dashboard = ({ user }) => {
           onClick={() => hasRes && handleDateClick(day)}
           className={cn(
             "p-2 text-center text-sm cursor-pointer rounded-lg transition-colors",
-            hasRes ? "bg-blue-100 text-blue-800 hover:bg-blue-200" : "hover:bg-gray-100",
-            isToday && "bg-blue-600 text-white hover:bg-blue-700",
-            hasRes && !isToday && "font-medium"
+            dayClass
           )}
         >
           {day}
@@ -374,10 +403,22 @@ const Dashboard = ({ user }) => {
           </CardHeader>
           <CardContent>
             {renderCalendar()}
-            <div className="mt-4 flex items-center space-x-4 text-sm text-gray-600">
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-100 border border-green-300 rounded-full"></div>
+                <span>Reservas Ativas</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded-full"></div>
+                <span>Reservas Pendentes</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded-full"></div>
+                <span>Ativas e Pendentes</span>
+              </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                <span>Dias com reservas</span>
+                <span>Hoje</span>
               </div>
             </div>
           </CardContent>
