@@ -85,7 +85,57 @@ export const useReservationForm = (selectedDate?: Date | null, setSelectedDate?:
     return formData.additionals.includes(12);
   };
 
+  // Input validation helper
+  const validateInput = (value: string, type: 'text' | 'number' | 'email' = 'text') => {
+    if (!value || value.trim().length === 0) return false;
+    
+    // Sanitize input - remove potentially dangerous characters
+    const sanitized = value.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                          .replace(/[<>]/g, '');
+    
+    switch (type) {
+      case 'email':
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized);
+      case 'number':
+        return /^\d+$/.test(sanitized);
+      case 'text':
+        return sanitized.length >= 2 && sanitized.length <= 1000;
+      default:
+        return true;
+    }
+  };
+
   const handleSubmit = () => {
+    // Comprehensive validation before submission
+    if (!formData.date || !formData.time || !formData.duration || !formData.location) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate text inputs
+    if (!validateInput(formData.responsible) || !validateInput(formData.department)) {
+      toast({
+        title: "Dados inválidos",
+        description: "Verifique os campos de responsável e departamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate observations if provided
+    if (formData.observations && formData.observations.trim().length > 2000) {
+      toast({
+        title: "Observações muito longas",
+        description: "As observações devem ter no máximo 2000 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (checkConflict()) {
       toast({
         title: "Conflito detectado!",
@@ -94,6 +144,15 @@ export const useReservationForm = (selectedDate?: Date | null, setSelectedDate?:
       });
       return;
     }
+
+    // Sanitize all form data before submission
+    const sanitizedData = {
+      ...formData,
+      responsible: formData.responsible.trim(),
+      department: formData.department.trim(),
+      observations: formData.observations.trim(),
+      decorationDetails: formData.decorationDetails.trim()
+    };
 
     toast({
       title: "Reserva solicitada com sucesso!",

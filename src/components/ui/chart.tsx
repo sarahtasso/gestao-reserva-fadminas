@@ -74,28 +74,58 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
+  // Sanitize the chart ID to prevent CSS injection
+  const sanitizedId = id.replace(/[^a-zA-Z0-9-_]/g, '')
+
+  // Create CSS variables safely without dangerouslySetInnerHTML
+  const cssVariables = React.useMemo(() => {
+    const styleSheet = new Map<string, string>()
+    
+    Object.entries(THEMES).forEach(([theme, prefix]) => {
+      const selector = prefix ? `${prefix} [data-chart="${sanitizedId}"]` : `[data-chart="${sanitizedId}"]`
+      const variables = colorConfig
+        .map(([key, itemConfig]) => {
+          const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color
+          // Sanitize color values to prevent injection
+          if (color && /^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^hsl\([\d\s,%.]+\)$|^rgb\([\d\s,%.]+\)$/.test(color)) {
+            return `--color-${key.replace(/[^a-zA-Z0-9-_]/g, '')}: ${color};`
+          }
+          return null
+        })
+        .filter(Boolean)
+        .join('\n  ')
+      
+      if (variables) {
+        styleSheet.set(selector, variables)
+      }
+    })
+    
+    return styleSheet
+  }, [sanitizedId, colorConfig])
+
+  React.useEffect(() => {
+    // Create a style element and populate it safely
+    const styleElement = document.createElement('style')
+    styleElement.setAttribute('data-chart-style', sanitizedId)
+    
+    let cssText = ''
+    cssVariables.forEach((variables, selector) => {
+      cssText += `${selector} {\n  ${variables}\n}\n`
+    })
+    
+    styleElement.textContent = cssText
+    document.head.appendChild(styleElement)
+
+    return () => {
+      // Cleanup on unmount
+      const existingStyle = document.querySelector(`style[data-chart-style="${sanitizedId}"]`)
+      if (existingStyle) {
+        existingStyle.remove()
+      }
+    }
+  }, [cssVariables, sanitizedId])
+
+  return null
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip

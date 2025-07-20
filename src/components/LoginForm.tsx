@@ -11,20 +11,51 @@ const LoginForm = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Usuários simulados para demonstração
+  // SECURITY WARNING: This is a development mock only
+  // For production, implement proper authentication with Supabase
   const mockUsers = [
-    { id: 1, email: 'admin@empresa.com', password: 'admin123', name: 'Admin Sistema', role: 'super_admin' },
-    { id: 2, email: 'gerente@empresa.com', password: 'gerente123', name: 'Maria Silva', role: 'admin' },
-    { id: 3, email: 'usuario@empresa.com', password: 'user123', name: 'João Santos', role: 'user' },
+    { id: 1, email: 'admin@empresa.com', password: 'demo123', name: 'Admin Sistema', role: 'super_admin' },
+    { id: 2, email: 'gerente@empresa.com', password: 'demo123', name: 'Maria Silva', role: 'admin' },
+    { id: 3, email: 'usuario@empresa.com', password: 'demo123', name: 'João Santos', role: 'user' },
   ];
 
   const handleLogin = (e) => {
     e.preventDefault();
     
-    const user = mockUsers.find(u => u.email === email && u.password === password);
+    // Input validation and sanitization
+    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedPassword = password.trim();
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      toast({
+        title: "Erro no login",
+        description: "Email inválido",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Rate limiting simulation (in production, implement server-side)
+    const lastAttempt = localStorage.getItem('lastLoginAttempt');
+    const now = Date.now();
+    if (lastAttempt && now - parseInt(lastAttempt) < 1000) {
+      toast({
+        title: "Muitas tentativas",
+        description: "Aguarde antes de tentar novamente",
+        variant: "destructive",
+      });
+      return;
+    }
+    localStorage.setItem('lastLoginAttempt', now.toString());
+    
+    const user = mockUsers.find(u => u.email === sanitizedEmail && u.password === sanitizedPassword);
     
     if (user) {
-      onLogin(user);
+      // Remove password from user object before storing
+      const { password: _, ...userWithoutPassword } = user;
+      onLogin(userWithoutPassword);
       toast({
         title: "Login realizado com sucesso!",
         description: `Bem-vindo, ${user.name}`,
@@ -32,7 +63,7 @@ const LoginForm = ({ onLogin }) => {
     } else {
       toast({
         title: "Erro no login",
-        description: "Email ou senha incorretos",
+        description: "Credenciais inválidas",
         variant: "destructive",
       });
     }
@@ -87,9 +118,12 @@ const LoginForm = ({ onLogin }) => {
             <div className="mt-6 text-sm text-gray-600 space-y-2">
               <p className="font-medium">Usuários de demonstração:</p>
               <div className="space-y-1 text-xs">
-                <p><strong>Super Admin:</strong> admin@empresa.com / admin123</p>
-                <p><strong>Admin:</strong> gerente@empresa.com / gerente123</p>
-                <p><strong>Usuário:</strong> usuario@empresa.com / user123</p>
+                <p><strong>Super Admin:</strong> admin@empresa.com / demo123</p>
+                <p><strong>Admin:</strong> gerente@empresa.com / demo123</p>
+                <p><strong>Usuário:</strong> usuario@empresa.com / demo123</p>
+              </div>
+              <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                ⚠️ Demo apenas - Para produção, implemente autenticação real com Supabase
               </div>
             </div>
           </CardContent>
