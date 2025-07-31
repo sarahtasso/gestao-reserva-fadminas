@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import LoginForm from '@/components/LoginForm';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 import Dashboard from '@/components/Dashboard';
 import NewReservation from '@/components/NewReservation';
 import ReservationsManager from '@/components/ReservationsManager';
@@ -8,16 +11,96 @@ import ResourcesManager from '@/components/ResourcesManager';
 import UsersManager from '@/components/UsersManager';
 import { Building2, Calendar, Settings, Users, BookOpen } from 'lucide-react';
 
+interface UserProfile {
+  id: string;
+  nome: string;
+  tipo_usuario: string;
+  telefone?: string;
+}
+
 const Index = () => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  if (!user) {
-    return <LoginForm onLogin={setUser} />;
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Defer profile fetch to avoid recursion
+          setTimeout(async () => {
+            const { data: profile, error } = await supabase
+              .from('perfis')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Erro ao buscar perfil:', error);
+              toast({
+                title: "Erro",
+                description: "Não foi possível carregar o perfil do usuário.",
+                variant: "destructive",
+              });
+            } else {
+              setUserProfile(profile);
+            }
+          }, 0);
+        } else {
+          setUserProfile(null);
+          navigate('/auth');
+        }
+        setLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
   }
 
-  const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+  if (!user || !userProfile) {
+    navigate('/auth');
+    return null;
+  }
+
+  const isAdmin = userProfile.tipo_usuario === 'admin_equipamento' || userProfile.tipo_usuario === 'super_admin';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -29,12 +112,13 @@ const Index = () => {
               <h1 className="text-xl font-semibold text-gray-900">Sistema de Controle Interno</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Olá, {user.name}</span>
+              <span className="text-sm text-gray-600">Olá, {userProfile.nome}</span>
               <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                {user.role === 'admin' ? 'Admin' : user.role === 'super_admin' ? 'Super Admin' : 'Usuário'}
+                {userProfile.tipo_usuario === 'super_admin' ? 'Super Admin' : 
+                 userProfile.tipo_usuario === 'admin_equipamento' ? 'Admin Equipamento' : 'Usuário'}
               </span>
               <button
-                onClick={() => setUser(null)}
+                onClick={handleLogout}
                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
                 Sair
