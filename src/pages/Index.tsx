@@ -42,7 +42,7 @@ const Index = () => {
               .from('perfis')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
             
             if (error) {
               console.error('Erro ao buscar perfil:', error);
@@ -51,8 +51,11 @@ const Index = () => {
                 description: "Não foi possível carregar o perfil do usuário.",
                 variant: "destructive",
               });
-            } else {
+            } else if (profile) {
               setUserProfile(profile);
+            } else {
+              // Perfil não encontrado, redirecionar para criação
+              navigate('/auth');
             }
           }, 0);
         } else {
